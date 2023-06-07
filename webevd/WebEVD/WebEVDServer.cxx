@@ -566,21 +566,21 @@ namespace evd {
     bool first = true;
 
     json << "  \"planes\": {\n";
-    for (geo::PlaneID plane : geom->IteratePlaneIDs()) {
+    for (geo::PlaneID plane : geom->Iterate<geo::PlaneID>()) {
       const geo::PlaneGeo& planegeo = geom->Plane(plane);
       const int view = planegeo.View();
       const unsigned int nwires = planegeo.Nwires();
       const double pitch = planegeo.WirePitch();
-      const TVector3 c = planegeo.GetCenter();
+      const geo::Point_t c = planegeo.GetCenter();
 
-      const TVector3 d = planegeo.GetIncreasingWireDirection();
-      const TVector3 n = planegeo.GetNormalDirection();
-      const TVector3 wiredir = planegeo.GetWireDirection();
+      const geo::Vector_t d = planegeo.GetIncreasingWireDirection();
+      const geo::Vector_t n = planegeo.GetNormalDirection();
+      const geo::Vector_t wiredir = planegeo.GetWireDirection();
 
       const double depth = planegeo.Depth();
       const double width = planegeo.Width();
-      const TVector3 depthdir = planegeo.DepthDir();
-      const TVector3 widthdir = planegeo.WidthDir();
+      const geo::Vector_t depthdir = planegeo.DepthDir();
+      const geo::Vector_t widthdir = planegeo.WidthDir();
 
       const double tick_origin = detprop.ConvertTicksToX(0, plane);
       const double tick_pitch = detprop.ConvertTicksToX(1, plane) - tick_origin;
@@ -597,14 +597,14 @@ namespace evd {
            << "\"nticks\": " << maxTick << ", "
            << "\"tick_origin\": " << tick_origin << ", "
            << "\"tick_pitch\": " << tick_pitch << ", "
-           << "\"center\": " << c << ", "
-           << "\"across\": " << d << ", "
-           << "\"wiredir\": " << wiredir << ", "
+           << "\"center\": " << TVector3(c.x(), c.y(), c.z()) << ", "
+           << "\"across\": " << TVector3(d.x(), d.y(), d.z()) << ", "
+           << "\"wiredir\": " << TVector3(wiredir.x(), wiredir.y(), wiredir.z()) << ", "
            << "\"depth\": " << depth << ", "
            << "\"width\": " << width << ", "
-           << "\"depthdir\": " << depthdir << ", "
-           << "\"widthdir\": " << widthdir << ", "
-           << "\"normal\": " << n << "}";
+           << "\"depthdir\": " << TVector3(depthdir.x(), depthdir.y(), depthdir.z()) << ", "
+           << "\"widthdir\": " << TVector3(widthdir.x(), widthdir.y(), widthdir.z()) << ", "
+           << "\"normal\": " << TVector3(n.x(), n.y(), n.z()) << "}";
     }
     json << "\n  }";
   }
@@ -619,9 +619,9 @@ namespace evd {
     json << ",\n\n";
 
     json << "  \"cryos\": [\n";
-    for (unsigned int i = 0; i < geom->Ncryostats(); ++i) {
-      json << "    " << geom->Cryostat(i);
-      if (i != geom->Ncryostats() - 1)
+    for (geo::CryostatID cID : geom->Iterate<geo::CryostatID>()) {
+      json << "    " << geom->Cryostat(cID);
+      if (cID.Cryostat != geom->Ncryostats() - 1)
         json << ",\n";
       else
         json << "\n";
