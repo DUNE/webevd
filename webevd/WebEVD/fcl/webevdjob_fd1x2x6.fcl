@@ -1,0 +1,7 @@
+#include "webevdjob_fd.fcl"
+
+services:
+{
+    @table::services
+    @table::dunefd_1x2x6_services
+}
