@@ -651,17 +651,21 @@ namespace evd {
       // This can fail in the case of dropped products
       if (!evt.getByLabel(tag, hits)) continue;
 
-      for (const recob::Hit& hit : *hits) {
-        // Would possibly be right for disambiguated hits?
-        //    const geo::WireID wire(hit.WireID());
 
+      for (const recob::Hit& hit : *hits) {
+        // Hits with this label should be disambiguated
+        // NOTE This is only for DUNE FD, there will be other disambiguated hit products
+        // not treated this way
+        if (tag.label() == "hitfd") {
+          const geo::PlaneID plane(hit.WireID());
+          plane_hits[tag][plane].push_back(hit);
+          continue;
+        }
+
+        // These hits are not disambiguated so consider all possible wires
         for (geo::WireID wire : geom->ChannelToWire(hit.Channel())) {
           const geo::PlaneID plane(wire);
 
-          // Correct for disambiguated hits
-          //      plane_hits[plane].push_back(hit);
-
-          // Otherwise we have to update the wire number
           plane_hits[tag][plane].emplace_back(hit.Channel(),
                                               hit.StartTick(),
                                               hit.EndTick(),
