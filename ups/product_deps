@@ -250,7 +250,7 @@ libdir	fq_dir		lib
 ####################################
 product		version		qual	flags		<table_format=2>
 gallery		v1_20_02	-
-lardata		v09_15_01 -
+lardata		v09_15_10 -
 cetmodules	v3_20_00	-	only_for_build
 end_product_list
 ####################################
@@ -313,6 +313,7 @@ e19:debug	e19:debug	e19:debug
 e19:prof	e19:prof	e19:prof
 e20:debug	e20:debug	e20:debug
 e20:prof	e20:prof	e20:prof
+e26:prof	e26:prof	e26:prof
 end_qualifier_list
 ####################################
 
