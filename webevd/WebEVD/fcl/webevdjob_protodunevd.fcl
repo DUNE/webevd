@@ -1,0 +1,29 @@
+#include "WebEVD.fcl"
+#include "services_refactored_pdune.fcl"
+
+process_name: WebEVD
+
+source:
+{
+  module_type: RootInput
+}
+
+services:
+{
+  @table::protodunevd_refactored_simulation_services
+  InputSeeker: {}
+}
+
+# Faster
+services.BackTrackerService: @erase
+services.PhotonBackTrackerService: @erase
+
+physics:
+{
+  analyzers:
+  {
+    evd: @local::standard_webevd
+  }
+
+  evd_path: [ evd ]
+}
