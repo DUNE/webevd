@@ -309,6 +309,8 @@ end_product_list
 qualifier	lardata		gallery		notes
 c7:debug	c7:debug	c7:debug
 c7:prof		c7:prof		c7:prof
+c14:debug	c14:debug	c14:debug
+c14:prof	c14:prof	c14:prof
 e19:debug	e19:debug	e19:debug
 e19:prof	e19:prof	e19:prof
 e20:debug	e20:debug	e20:debug
