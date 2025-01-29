@@ -27,6 +27,7 @@ cet_make_library(BASENAME_ONLY
   lardataobj::RecoBase
   lardataobj::Simulation
   larcorealg::Geometry
+  larcore::headers
   nusimdata::SimulationBase
   gallery::gallery
   fhiclcpp::fhiclcpp
