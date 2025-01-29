@@ -9,6 +9,7 @@
 
 #include "art/Framework/Services/Registry/ServiceHandle.h"
 #include "larcore/Geometry/Geometry.h"
+#include "larcore/Geometry/WireReadout.h"
 #include "lardata/DetectorInfoServices/DetectorPropertiesService.h"
 
 #include "webevd/WebEVD/ThreadsafeGalleryEvent.h"
@@ -207,7 +208,8 @@ int main(int argc, char** argv)
 
   ArtServiceHelper::load_services(FCLConfigForDetector(det));
 
-  const geo::GeometryCore* geom = art::ServiceHandle<geo::Geometry>()->provider();
+  const geo::GeometryCore* geom = art::ServiceHandle<geo::Geometry>().get();
+  const geo::WireReadoutGeom* wireReadoutGeom = &art::ServiceHandle<geo::WireReadout>()->Get();
   const detinfo::DetectorPropertiesData detprop =
     art::ServiceHandle<detinfo::DetectorPropertiesService>()->DataForJob();
 
@@ -241,7 +243,7 @@ int main(int argc, char** argv)
               << std::endl;
 
     evd::ThreadsafeGalleryEvent tsevt(&evt);
-    const evd::Result res = server.serve(tsevt, geom, detprop);
+    const evd::Result res = server.serve(tsevt, geom, wireReadoutGeom, detprop);
 
     switch (res.code) {
     case evd::kNEXT:

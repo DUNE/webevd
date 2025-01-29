@@ -34,6 +34,7 @@
 #include "lardataobj/RawData/raw.h" // Uncompress()
 
 #include "larcorealg/Geometry/GeometryCore.h"
+#include "larcore/Geometry/WireReadout.h"
 #include "lardataalg/DetectorInfo/DetectorPropertiesData.h"
 
 #include <sys/socket.h>
@@ -559,15 +560,15 @@ namespace evd {
   }
 
   // ----------------------------------------------------------------------------
-  void SerializePlanes(const geo::GeometryCore* geom,
+  void SerializePlanes(const geo::WireReadoutGeom* wrGeom,
                        const detinfo::DetectorPropertiesData& detprop,
                        JSONFormatter& json)
   {
     bool first = true;
 
     json << "  \"planes\": {\n";
-    for (geo::PlaneID plane : geom->Iterate<geo::PlaneID>()) {
-      const geo::PlaneGeo& planegeo = geom->Plane(plane);
+    for (geo::PlaneID plane : wrGeom->Iterate<geo::PlaneID>()) {
+      const geo::PlaneGeo& planegeo = wrGeom->Plane(plane);
       const int view = planegeo.View();
       const unsigned int nwires = planegeo.Nwires();
       const double pitch = planegeo.WirePitch();
@@ -611,11 +612,12 @@ namespace evd {
 
   // ----------------------------------------------------------------------------
   void SerializeGeometry(const geo::GeometryCore* geom,
+                         const geo::WireReadoutGeom* wrGeom,
                          const detinfo::DetectorPropertiesData& detprop,
                          JSONFormatter& json)
   {
     json << "{\n";
-    SerializePlanes(geom, detprop, json);
+    SerializePlanes(wrGeom, detprop, json);
     json << ",\n\n";
 
     json << "  \"cryos\": [\n";
@@ -642,7 +644,9 @@ namespace evd {
 
   // ----------------------------------------------------------------------------
   template <class T>
-  void SerializeHits(const T& evt, const geo::GeometryCore* geom, JSONFormatter& json)
+  void SerializeHits(const T& evt,
+                     const geo::WireReadoutGeom* wrGeom,
+                     JSONFormatter& json)
   {
     std::map<art::InputTag, std::map<geo::PlaneID, std::vector<recob::Hit>>> plane_hits;
 
@@ -663,7 +667,7 @@ namespace evd {
         }
 
         // These hits are not disambiguated so consider all possible wires
-        for (geo::WireID wire : geom->ChannelToWire(hit.Channel())) {
+        for (geo::WireID wire : wrGeom->ChannelToWire(hit.Channel())) {
           const geo::PlaneID plane(wire);
 
           plane_hits[tag][plane].emplace_back(hit.Channel(),
@@ -674,7 +678,8 @@ namespace evd {
                                               hit.RMS(),
                                               hit.PeakAmplitude(),
                                               hit.SigmaPeakAmplitude(),
-                                              hit.SummedADC(),
+                                              hit.ROISummedADC(),
+                                              hit.HitSummedADC(),
                                               hit.Integral(),
                                               hit.SigmaIntegral(),
                                               hit.Multiplicity(),
@@ -727,7 +732,9 @@ namespace evd {
 
   // ----------------------------------------------------------------------------
   template <class T>
-  void SerializeDigitTraces(const T& evt, const geo::GeometryCore* geom, JSONFormatter& json)
+  void SerializeDigitTraces(const T& evt,
+                            const geo::WireReadoutGeom* wrGeom,
+                            JSONFormatter& json)
   {
     // [tag][plane][wire index][t0]
     std::map<art::InputTag,
@@ -740,7 +747,7 @@ namespace evd {
       if (!evt.getByLabel(tag, digs)) continue;
 
       for (const raw::RawDigit& dig : *digs) {
-        for (geo::WireID wire : geom->ChannelToWire(dig.Channel())) {
+        for (geo::WireID wire : wrGeom->ChannelToWire(dig.Channel())) {
           const geo::PlaneID plane(wire);
 
           raw::RawDigit::ADCvector_t adcs(dig.Samples());
@@ -756,7 +763,9 @@ namespace evd {
 
   // ----------------------------------------------------------------------------
   template <class T>
-  void SerializeWireTraces(const T& evt, const geo::GeometryCore* geom, JSONFormatter& json)
+  void SerializeWireTraces(const T& evt,
+                           const geo::WireReadoutGeom* wrGeom,
+                           JSONFormatter& json)
   {
     // [tag][plane][wire][t0]
     std::map<art::InputTag,
@@ -770,7 +779,7 @@ namespace evd {
 
       for (const recob::Wire& rbwire : *wires) {
         // Place all wire traces on the first wire (== channel) they are found on
-        const geo::WireID wire = geom->ChannelToWire(rbwire.Channel())[0];
+        const geo::WireID wire = wrGeom->ChannelToWire(rbwire.Channel())[0];
         const geo::PlaneID plane(wire);
 
         traces[tag][plane][wire.Wire] = ToSnippets(rbwire.Signal());
@@ -786,6 +795,7 @@ namespace evd {
                       int sock,
                       const T* evt,
                       const geo::GeometryCore* geom,
+                      const geo::WireReadoutGeom* wrGeom,
                       const detinfo::DetectorPropertiesData* detprop,
                       ILazy* digs,
                       ILazy* wires)
@@ -812,17 +822,17 @@ namespace evd {
     else if (doc == "/opflashes.json")
       SerializeProduct<recob::OpFlash>(*evt, json);
     else if (doc == "/hits.json")
-      SerializeHits(*evt, geom, json);
+      SerializeHits(*evt, wrGeom, json);
     else if (doc == "/geom.json")
-      SerializeGeometry(geom, *detprop, json);
+      SerializeGeometry(geom, wrGeom, *detprop, json);
     else if (doc == "/digs.json")
       digs->Serialize(json);
     else if (doc == "/wires.json")
       wires->Serialize(json);
     else if (doc == "/dig_traces.json")
-      SerializeDigitTraces(*evt, geom, json);
+      SerializeDigitTraces(*evt, wrGeom, json);
     else if (doc == "/wire_traces.json")
-      SerializeWireTraces(*evt, geom, json);
+      SerializeWireTraces(*evt, wrGeom, json);
     else {
       write_notfound404(sock);
       close(sock);
@@ -844,6 +854,7 @@ namespace evd {
                   ILazy* digs,
                   ILazy* wires,
                   const geo::GeometryCore* geom,
+                  const geo::WireReadoutGeom* wrGeom,
                   const detinfo::DetectorPropertiesData* detprop)
   {
     if (doc == "/") doc = "/index.html";
@@ -854,7 +865,7 @@ namespace evd {
     }
 
     if (endswith(doc, ".json")) {
-      _HandleGetJSON(doc, sock, evt, geom, detprop, digs, wires);
+      _HandleGetJSON(doc, sock, evt, geom, wrGeom, detprop, digs, wires);
       return;
     }
 
@@ -932,7 +943,8 @@ namespace evd {
   template <class T>
   class LazyDigits : public ILazy {
   public:
-    LazyDigits(const T& evt, const geo::GeometryCore* geom) : fEvt(&evt), fGeom(geom), fArena("dig")
+    LazyDigits(const T& evt, const geo::WireReadoutGeom* wrGeom) :
+      fEvt(&evt), fWrGeom(wrGeom), fArena("dig")
     {}
 
     virtual void Serialize(JSONFormatter& json) override
@@ -952,7 +964,7 @@ namespace evd {
     {
       std::lock_guard guard(fLock);
 
-      if (!fEvt || !fGeom) return; // already init'd
+      if (!fEvt || !fWrGeom) return; // already init'd
 
       for (art::InputTag tag : fEvt->template getInputTags<std::vector<raw::RawDigit>>()) {
         typename T::template HandleT<std::vector<raw::RawDigit>> digs; // deduce handle type
@@ -960,11 +972,12 @@ namespace evd {
         if (!fEvt->getByLabel(tag, digs)) continue;
 
         for (const raw::RawDigit& dig : *digs) {
-          for (geo::WireID wire : fGeom->ChannelToWire(dig.Channel())) {
+          for (geo::WireID wire : fWrGeom->ChannelToWire(dig.Channel())) {
             //        const geo::TPCID tpc(wire);
             const geo::PlaneID plane(wire);
 
-            const geo::WireID w0 = fGeom->GetBeginWireID(plane);
+            // const geo::WireID w0 = fWrGeom->GetBeginWireID(plane);
+            const geo::WireID w0 {plane, 0};
 
             if (fImgs[tag].count(plane) == 0) { fImgs[tag].emplace(plane, PNGView(fArena)); }
 
@@ -994,11 +1007,11 @@ namespace evd {
       }       // end for tag
 
       fEvt = 0;
-      fGeom = 0;
+      fWrGeom = 0;
     }
 
     const T* fEvt;
-    const geo::GeometryCore* fGeom;
+    const geo::WireReadoutGeom* fWrGeom;
 
     std::mutex fLock;
     PNGArena fArena;
@@ -1009,7 +1022,8 @@ namespace evd {
   template <class T>
   class LazyWires : public ILazy {
   public:
-    LazyWires(const T& evt, const geo::GeometryCore* geom) : fEvt(&evt), fGeom(geom), fArena("wire")
+    LazyWires(const T& evt, const geo::WireReadoutGeom* wrGeom) :
+      fEvt(&evt), fWrGeom(wrGeom), fArena("wire")
     {}
 
     virtual void Serialize(JSONFormatter& json) override
@@ -1029,7 +1043,7 @@ namespace evd {
     {
       std::lock_guard guard(fLock);
 
-      if (!fEvt || !fGeom) return; // already init'd
+      if (!fEvt || !fWrGeom) return; // already init'd
 
       for (art::InputTag tag : fEvt->template getInputTags<std::vector<recob::Wire>>()) {
         typename T::template HandleT<std::vector<recob::Wire>> wires; // deduce handle type
@@ -1037,11 +1051,12 @@ namespace evd {
         if (!fEvt->getByLabel(tag, wires)) continue;
 
         for (const recob::Wire& rbwire : *wires) {
-          for (geo::WireID wire : fGeom->ChannelToWire(rbwire.Channel())) {
+          for (geo::WireID wire : fWrGeom->ChannelToWire(rbwire.Channel())) {
             //        const geo::TPCID tpc(wire);
             const geo::PlaneID plane(wire);
 
-            const geo::WireID w0 = fGeom->GetBeginWireID(plane);
+            // const geo::WireID w0 = fWrGeom->GetBeginWireID(plane);
+            const geo::WireID w0 {plane, 0};
 
             if (fImgs[tag].count(plane) == 0) { fImgs[tag].emplace(plane, PNGView(fArena)); }
 
@@ -1062,12 +1077,12 @@ namespace evd {
       }       // end for tag
 
       fEvt = 0;
-      fGeom = 0;
+      fWrGeom = 0;
     }
 
   protected:
     const T* fEvt;
-    const geo::GeometryCore* fGeom;
+    const geo::WireReadoutGeom* fWrGeom;
 
     std::mutex fLock;
     PNGArena fArena;
@@ -1079,6 +1094,7 @@ namespace evd {
   template <class T>
   Result WebEVDServer<T>::serve(const T& evt,
                                 const geo::GeometryCore* geom,
+                                const geo::WireReadoutGeom* wrGeom,
                                 const detinfo::DetectorPropertiesData& detprop)
   {
     // Don't want a sigpipe signal when the browser hangs up on us. This way we
@@ -1087,8 +1103,8 @@ namespace evd {
 
     if (EnsureListen() != 0) return kERROR;
 
-    LazyDigits<T> digs(evt, geom);
-    LazyWires<T> wires(evt, geom);
+    LazyDigits<T> digs(evt, wrGeom);
+    LazyWires<T> wires(evt, wrGeom);
 
     std::list<std::thread> threads;
 
@@ -1115,7 +1131,7 @@ namespace evd {
           return HandleCommand(sreq, sock);
         }
         else {
-          threads.emplace_back(_HandleGet<T>, sreq, sock, &evt, &digs, &wires, geom, &detprop);
+          threads.emplace_back(_HandleGet<T>, sreq, sock, &evt, &digs, &wires, geom, wrGeom, &detprop);
         }
       }
       else {

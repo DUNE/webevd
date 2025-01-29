@@ -6,6 +6,8 @@
 
 #include "art/Framework/Principal/Event.h"
 
+#include "larcorealg/Geometry/GeometryCore.h"
+
 namespace geo {
   class GeometryCore;
 }
@@ -33,6 +35,7 @@ namespace evd {
 
     Result serve(const T& evt,
                  const geo::GeometryCore* geom,
+                 const geo::WireReadoutGeom* wrGeom,
                  const detinfo::DetectorPropertiesData& detprop);
 
   protected:
