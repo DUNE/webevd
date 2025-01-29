@@ -2,6 +2,16 @@
 
 Web event display for LArSoft data products
 
+## Usage
+
+1. Setup the products:
+```
+setup webevd <version> -q <qualifier>
+setup dunesw <same version> -q <same qualifier>
+```
+2. Look in `webevd/WebEVD/fcl` for the fcl with the appropriate geometry, if it's not there make one your own!
+3. Run the fcl on your file of interest and follow the instructions it spits out to view the EVD.
+
 ## Copyright and Licensing
 Copyright © 2023 University College London for the benefit of the DUNE Collaboration.
 
