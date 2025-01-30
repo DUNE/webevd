@@ -87,7 +87,7 @@
 #>  define_pythonpath
 ####################################
 parent		webevd
-defaultqual	e20
+defaultqual	e26
 ####################################
 
 ####################################
@@ -316,6 +316,7 @@ e19:prof	e19:prof	e19:prof
 e20:debug	e20:debug	e20:debug
 e20:prof	e20:prof	e20:prof
 e26:prof	e26:prof	e26:prof
+e26:debug	e26:debug	e26:debug
 end_qualifier_list
 ####################################
 
